@@ -96,12 +96,16 @@ Curio-compat : 1.6.7
 ```
 
 
-a task of literally doing nothing(`olive.tasks.do_nothing`), 100,000 meassges holding in RabbitMQ in advance, prefetch set to be 80.
+1. a task of literally doing nothing(`olive.tasks.do_nothing`)
+2. 100,000 meassges holding in RabbitMQ in advance
+3. prefetch set to be 80.
 
+```
 
 curio.ThreadWorker, 20 threads, 4k/s
 curio.ProcessWorker, 20 processes, 5k/s
 
 celery, concurrency=20, pool=threads, 4k/s.
 celery, prefork, concurrency=20, pool=processes, 5k/s
+```
 
