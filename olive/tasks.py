@@ -11,6 +11,10 @@ def sleep_n(n):
     return
 
 
+def do_nothing():
+    return
+
+
 def main():
     return
 

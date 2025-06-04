@@ -16,20 +16,35 @@ class WorkerType(Enum):
         return self.value
 
 
+class PoolImp(Enum):
+    curio = "curio"
+    concurrent = "concurrent"
+
+    def __deepcopy__(self, memo):
+        return self.value
+
+
 @dataclasses.dataclass
 class WorkerConfig(ConfigAbs):
     env_prefix = "worker"
-    num_workers: int = 32
+    num_workers: int = 20
     worker_type: WorkerType = WorkerType.thread
+    pool_imp: PoolImp = PoolImp.curio
 
     def __post_init__(self):
         if isinstance(self.worker_type, (int, str)):
             self.worker_type = WorkerType(self.worker_type)
+        if isinstance(self.pool_imp, (int, str)):
+            self.pool_imp = PoolImp(self.pool_imp)
         return
 
     @property
     def process_worker(self):
         return self.worker_type == WorkerType.process
+
+    @property
+    def curio_pool(self):
+        return self.pool_imp == PoolImp.curio
 
 
 @dataclasses.dataclass
@@ -40,7 +55,7 @@ class AMQPConfig(ConfigAbs):
     exchange_name: str = "Olive.x"
     queue_name: str = "Olive.q"
     routing_key: str = "Olive.k"
-    qos: int = -1
+    qos: int = 80
     global_qos: bool = True
 
 
@@ -50,6 +65,7 @@ class OliveAppConfig(ConfigAbs):
 
     amqp_config: AMQPConfig = dataclasses.field(default_factory=lambda: AMQPConfig())
     worker_config: WorkerConfig = dataclasses.field(default_factory=lambda: WorkerConfig())
+    #
 
 
 @dataclasses.dataclass

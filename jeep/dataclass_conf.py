@@ -66,16 +66,16 @@ class ConfigAbs:
 
     @classmethod
     def from_env(cls, prefix=None):
-        p = cls.env_prefix
-        if prefix:
-            p = f"{prefix}:{p}"
+        p = cls.env_prefix or ""
+        if p and prefix:
+            p = f"{prefix}_{p}"
         ret = {}
         fs = dataclasses.fields(cls)
         for f in fs:
             if issubclass(f.type, ConfigAbs):
                 val = f.type.from_env(p)
             else:
-                key = f"{p}.{f.name}"
+                key = f"{p}_{f.name}"
                 val = os.environ.get(key, None)
                 if not val:
                     continue

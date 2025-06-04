@@ -84,3 +84,21 @@ run `olive_utils.py` to send a task to the task queue application, and the task 
 
 for more implementation details, please check out `implementation.md`.
 
+# Benchmark
+
+OS           : ubuntu 22.04.5 LTS 
+CPU          : i7-12700KF, 20 cores
+Python       : 3.12
+Celery       : 5.5.3, CRITICAL log level
+Curio-compat : 1.6.7
+
+
+a task of literally doing nothing(`olive.tasks.do_nothing`), 100,000 meassges holding in RabbitMQ in advance, prefetch set to be 80.
+
+
+curio.ThreadWorker, 20 threads, 4k/s
+curio.ProcessWorker, 20 processes, 5k/s
+
+celery, concurrency=20, pool=threads, 4k/s.
+celery, prefork, concurrency=20, pool=processes, 5k/s
+

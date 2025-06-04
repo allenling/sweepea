@@ -3,14 +3,17 @@
 import os
 import logging
 import threading
+import pprint
+from concurrent.futures.thread import ThreadPoolExecutor
+from concurrent.futures.process import ProcessPoolExecutor
+
+from curio.traps import _future_wait
+from curio.workers import run_in_thread, run_in_process, ThreadWorker, WorkerPool, ProcessWorker
 
 from sweepea.kernel import PeaAMQP
 
-from curio.workers import run_in_thread, run_in_process, ThreadWorker, WorkerPool, ProcessWorker
-
 from .common import OliveAppConfig, OliveTaskMessage
 from olive.workers import import_and_run
-
 
 logger = logging.getLogger(__file__)
 
@@ -24,15 +27,28 @@ class OliveOly(PeaAMQP):
         self.worker_config = config.worker_config
         self.amqp_config = config.amqp_config
         self._shutdown_funcs = []
+        self._executor = None
+        self.submit_to_pool = None
         if self.worker_config.process_worker:
-            self.process_pool = WorkerPool(ProcessWorker, self.worker_config.num_workers)
-            self.submit_to_pool = run_in_process
-            self._call_at_shutdown(self.process_pool.shutdown)
+            if self.worker_config.curio_pool:
+                self.process_pool = WorkerPool(ProcessWorker, self.worker_config.num_workers)
+                self.submit_to_pool = run_in_process
+                self._call_at_shutdown(self.process_pool.shutdown)
+            else:
+                self._executor = ProcessPoolExecutor(self.worker_config.num_workers)
         else:
-            self.thread_pool = WorkerPool(ThreadWorker, self.worker_config.num_workers)
-            self.submit_to_pool = run_in_thread
-            self._call_at_shutdown(self.thread_pool.shutdown)
-        self.log_debug(f"pid: {os.getpid()}, thread id: {threading.get_ident()}")
+            if self.worker_config.curio_pool:
+                self.thread_pool = WorkerPool(ThreadWorker, self.worker_config.num_workers)
+                self.submit_to_pool = run_in_thread
+                self._call_at_shutdown(self.thread_pool.shutdown)
+            else:
+                self._executor = ThreadPoolExecutor(self.worker_config.num_workers)
+        config_str = pprint.pformat(config.to_dict(), indent=4)
+        self.log_info(f"\n{config_str}")
+        self.log_info(f"executor: {self._executor}")
+        self.log_info(f"submit_to_pool: {self.submit_to_pool}")
+        self.log_info(f"pid: {os.getpid()}, thread id: {threading.get_ident()}")
+        self.files_sems = {}
         return
 
     async def init_app(self):
@@ -54,7 +70,11 @@ class OliveOly(PeaAMQP):
     async def task_await(self, msg, delivery_tag):
         self.log_debug(f"submit and run {msg.tid}")
         try:
-            ret = await self.submit_to_pool(import_and_run, msg.func, *msg.args, **msg.kwargs)
+            if self._executor:
+                fn = self._executor.submit(import_and_run, msg.func, *msg.args, **msg.kwargs)
+                ret = await _future_wait(fn)
+            else:
+                ret = await self.submit_to_pool(import_and_run, msg.func, *msg.args, **msg.kwargs)
             self.log_debug(f"{msg.tid} done, ret {ret}")
         finally:
             self.log_debug(f"ack delivery_tag {delivery_tag}")
