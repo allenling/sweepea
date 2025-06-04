@@ -86,11 +86,14 @@ for more implementation details, please check out `implementation.md`.
 
 # Benchmark
 
+```
+
 OS           : ubuntu 22.04.5 LTS 
 CPU          : i7-12700KF, 20 cores
 Python       : 3.12
 Celery       : 5.5.3, CRITICAL log level
 Curio-compat : 1.6.7
+```
 
 
 a task of literally doing nothing(`olive.tasks.do_nothing`), 100,000 meassges holding in RabbitMQ in advance, prefetch set to be 80.
